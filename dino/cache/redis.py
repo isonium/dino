@@ -82,62 +82,48 @@ class RedisWrapper(object):
         """
         self.r_server = r_server
 
-    @timeit(logger, 'on_redis_hmset')
     def hmset(self, *args):
         return self.r_server.hmset(*args)
 
     def expire(self, *args):
         return self.r_server.expire(*args)
 
-    @timeit(logger, 'on_redis_hgetall')
     def hgetall(self, *args):
         return self.r_server.hgetall(*args)
 
-    @timeit(logger, 'on_redis_get')
     def get(self, *args):
         return self.r_server.get(*args)
 
-    @timeit(logger, 'on_redis_set')
     def set(self, *args):
         return self.r_server.set(*args)
 
-    @timeit(logger, 'on_redis_delete')
     def delete(self, *args):
         return self.r_server.delete(*args)
 
-    @timeit(logger, 'on_redis_flushdb')
     def flushdb(self):
         return self.r_server.flushdb()
 
-    @timeit(logger, 'on_redis_hdel')
     def hdel(self, *args):
         return self.r_server.hdel(*args)
 
-    @timeit(logger, 'on_redis_hexists')
     def hexists(self, *args):
         return self.r_server.hexists(*args)
 
-    @timeit(logger, 'on_redis_hget')
     def hget(self, *args):
         return self.r_server.hget(*args)
 
-    @timeit(logger, 'on_redis_hset')
     def hset(self, *args):
         return self.r_server.hset(*args)
 
-    @timeit(logger, 'on_redis_sadd')
     def sadd(self, *args):
         return self.r_server.sadd(*args)
 
-    @timeit(logger, 'on_redis_setbit')
     def setbit(self, *args):
         return self.r_server.setbit(*args)
 
-    @timeit(logger, 'on_redis_smembers')
     def smembers(self, *args):
         return self.r_server.smembers(*args)
 
-    @timeit(logger, 'on_redis_srem')
     def srem(self, *args):
         return self.r_server.srem(*args)
 
@@ -357,6 +343,9 @@ class CacheRedis(object):
         self.cache.delete(key)
 
     def _get_ban_timestamp(self, key: str, user_id: str) -> (str, str, str):
+        """
+        TODO: check db not local cache
+
         cache_key = '%s-%s' % (key, user_id)
         value = self.cache.get(cache_key)
         if value is not None:
@@ -368,6 +357,8 @@ class CacheRedis(object):
 
         ban_info = str(ban_info, 'utf-8')
         return ban_info.split('|', 2)
+        """
+        return None, None, None
 
     def get_global_ban_timestamp(self, user_id: str) -> str:
         key = RedisKeys.banned_users()
@@ -597,7 +588,10 @@ class CacheRedis(object):
         self.redis.hset(key, user_id, user_name)
         self.cache.set(cache_key, user_name)
 
-    def get_room_exists(self, channel_id, room_id):
+    def get_room_exists(self, channel_id, room_id) -> Union[bool, None]:
+        """
+        # TODO: check db not local cache for this, don't want to sync
+
         key = RedisKeys.rooms(channel_id)
         cache_key = '%s-%s' % (key, room_id)
         value = self.cache.get(cache_key)
@@ -608,6 +602,8 @@ class CacheRedis(object):
         if exists == 1:
             self.cache.set(cache_key, True)
             return True
+        return None
+        """
         return None
 
     def remove_channel_exists(self, channel_id: str) -> None:
@@ -677,7 +673,10 @@ class CacheRedis(object):
         self.redis.hset(key, room_id, channel_id)
         self.cache.set(cache_key, channel_id, ttl=EIGHT_HOURS_IN_SECONDS)
 
-    def get_channel_exists(self, channel_id):
+    def get_channel_exists(self, channel_id) -> Union[bool, None]:
+        """
+        # TODO: check db not local cache for this, don't want to sync
+
         key = RedisKeys.channel_exists()
         cache_key = '%s-%s' % (key, channel_id)
         value = self.cache.get(cache_key)
@@ -690,6 +689,8 @@ class CacheRedis(object):
 
         self.cache.set(cache_key, True)
         return True
+        """
+        return None
 
     def set_channel_name(self, channel_id: str, channel_name: str) -> None:
         key = RedisKeys.channels()
@@ -748,13 +749,20 @@ class CacheRedis(object):
         self.cache.set(cache_key, channel_id)
         return channel_id
 
-    def get_user_status(self, user_id: str):
+    def get_user_status(self, user_id: str) -> Union[str, None]:
+        """
+        TODO: this shouldn't be checked in redis cache if we use
+        one cache per machine; needs to be synchronized, so
+        check db instead
+
         key = RedisKeys.user_status(user_id)
         status = self.redis.get(key)
         if status is None or status == '':
             return None
 
         return str(status, 'utf-8')
+        """
+        return None
 
     def set_user_status(self, user_id: str, status: str) -> None:
         key = RedisKeys.user_status(user_id)
@@ -765,15 +773,17 @@ class CacheRedis(object):
         return self.cache.get(key)
 
     def set_user_info(self, user_id: str, info: dict) -> None:
+        # TODO: this should ideally be from db since we need to sync... fix if needed
         key = RedisKeys.auth_key(user_id)
-        self.cache.set(key, info, ttl=ONE_HOUR)
+        self.cache.set(key, info, ttl=TEN_SECONDS)
 
     def reset_user_info(self, user_id: str) -> None:
         key = RedisKeys.auth_key(user_id)
         self.cache.delete(key)
 
     def user_check_status(self, user_id, other_status):
-        return self.get_user_status(user_id) == other_status
+        status = self.get_user_status(user_id)
+        return status is not None and status == other_status
 
     def user_is_offline(self, user_id):
         return self.user_check_status(user_id, UserKeys.STATUS_UNAVAILABLE)
