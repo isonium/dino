@@ -85,4 +85,9 @@ class SendResource(BaseResource):
             logger.info('user {} is offline, dropping message: {}'.format(target_id, str(json)))
             return
 
-        environ.env.internal_publisher.publish(data)
+        queue_name = environ.env.cache.get_user_node(user_id)
+        if queue_name is None:
+            # might have some race condition where the node associated with the user was removed, so send to all
+            environ.env.internal_publisher.publish(data)
+        else:
+            environ.env.direct_publisher.publish(data, queue_name=queue_name)

@@ -31,12 +31,13 @@ queue_handler = QueueHandler(socketio, environ.env)
 
 
 class Worker(ConsumerMixin):
-    def __init__(self, connection, signal_handler: GracefulInterruptHandler):
+    def __init__(self, connection, the_queue, signal_handler: GracefulInterruptHandler):
         self.connection = connection
+        self.the_queue = the_queue
         self.signal_handler = signal_handler
 
     def get_consumers(self, consumer, channel):
-        return [consumer(queues=[environ.env.internal_publisher.queue], callbacks=[self.process_task])]
+        return [consumer(queues=[self.the_queue], callbacks=[self.process_task])]
 
     def on_iteration(self):
         if self.signal_handler.interrupted:
@@ -62,8 +63,38 @@ def consume():
                     logger.info('setting up consumer "{}"'.format(
                         str(environ.env.internal_publisher.queue_connection)))
 
-                    environ.env.consume_worker = Worker(conn, interrupt_handler)
+                    environ.env.consume_worker = Worker(
+                        conn,
+                        environ.env.internal_publisher.queue,
+                        interrupt_handler
+                    )
                     environ.env.consume_worker.run()
+                except KeyboardInterrupt:
+                    return
+
+            if interrupt_handler.interrupted or environ.env.consume_worker.should_stop:
+                return
+
+            time.sleep(0.1)
+
+
+def consume_direct_queue():
+    if len(environ.env.config) == 0 or environ.env.config.get(ConfigKeys.TESTING, False):
+        return
+
+    with GracefulInterruptHandler() as interrupt_handler:
+        while True:
+            with environ.env.internal_publisher.queue_connection as conn:
+                try:
+                    logger.info('setting up direct consumer "{}"'.format(
+                        str(environ.env.direct_publisher.queue_connection)))
+
+                    environ.env.consume_worker_direct = Worker(
+                        conn,
+                        environ.env.direct_publisher.queue,
+                        interrupt_handler
+                    )
+                    environ.env.consume_worker_direct.run()
                 except KeyboardInterrupt:
                     return
 
@@ -82,6 +113,7 @@ if not environ.env.config.get(ConfigKeys.TESTING, False):
     environ.env._force_disconnect_by_sid = socketio.server.disconnect
     environ.env.disconnect_by_sid = disconnect_by_sid
     eventlet.spawn_n(consume)
+    eventlet.spawn_n(consume_direct_queue)
 
 
 @app.route('/', methods=['GET', 'POST'])

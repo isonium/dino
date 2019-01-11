@@ -24,6 +24,27 @@ class PubSub(object):
 
         self._setup_internal_queue(conf, env)
         self._setup_external_queue(conf, env)
+        self._setup_direct_queue(conf, env)
+
+    def _setup_direct_queue(self, conf, env):
+        queue_type = conf.get(ConfigKeys.TYPE, domain=ConfigKeys.QUEUE, default=None)
+        if queue_type is None:
+            raise RuntimeError('no message queue specified')
+
+        if queue_type == 'redis':
+            from dino.endpoint.redis import RedisPublisher
+            self.env.direct_publisher = RedisPublisher(env, is_external_queue=False)
+
+        elif queue_type == 'amqp':
+            from dino.endpoint.amqp import AmqpPublisher
+            self.env.direct_publisher = AmqpPublisher(env, is_external_queue=False, fanout=False)
+
+        elif queue_type == 'mock':
+            from dino.endpoint.mock import MockPublisher
+            self.env.direct_publisher = MockPublisher(env, is_external_queue=False)
+
+        else:
+            raise RuntimeError('unknown message queue type "{}"'.format(queue_type))
 
     def _setup_internal_queue(self, conf, env):
         queue_type = conf.get(ConfigKeys.TYPE, domain=ConfigKeys.QUEUE, default=None)

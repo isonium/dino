@@ -38,15 +38,17 @@ class BasePublisher(ABC):
         else:
             self.domain_key = ConfigKeys.QUEUE
 
+        self.is_fanout_queue = False
         self.queue_connection = None
         self.queue = None
+        self.queue_name = None
         self.exchange = None
         self.message_type = 'external' if self.is_external_queue else 'internal'
 
     def error_callback(self, exc, interval) -> None:
         self.logger.warning('could not connect to MQ (interval: %s): %s' % (str(interval), str(exc)))
 
-    def try_publish(self, message):
+    def try_publish(self, message, queue_name: str=None):
         self.logger.info('sending "{}" with "{}"'.format(self.message_type, str(self.queue_connection)))
 
         with producers[self.queue_connection].acquire(block=False) as producer:
@@ -57,13 +59,21 @@ class BasePublisher(ABC):
                 max_retries=3
             )
 
+            if self.is_fanout_queue:
+                queue = self.queue
+            else:
+                queue = self.get_direct_queue(queue_name, self.exchange)
+
             amqp_publish(
                 message,
                 exchange=self.exchange,
-                declare=[self.exchange, self.queue]
+                declare=[self.exchange, queue]
             )
 
-    def publish(self, message: dict) -> None:
+    def get_direct_queue(self, queue_name, exchange):
+        raise NotImplemented()
+
+    def publish(self, message: dict, queue_name: str=None) -> None:
         if self.recently_sent_has(message['id']):
             self.logger.debug('ignoring external event with verb %s and id %s, already sent' %
                          (message['verb'], message['id']))
@@ -76,7 +86,7 @@ class BasePublisher(ABC):
 
         for current_try in range(n_tries):
             try:
-                self.try_publish(message)
+                self.try_publish(message, queue_name)
 
                 self.env.stats.incr('publish.external.count')
                 self.env.stats.timing('publish.external.time', (time.time()-start)*1000)

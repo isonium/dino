@@ -237,6 +237,7 @@ class GNEnvironment(object):
         self.publish = lambda message, external: None
         self.internal_publisher = None
         self.external_publisher = None
+        self.direct_publisher = None
         self.consume_worker = None
 
         self.blacklist = None

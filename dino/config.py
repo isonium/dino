@@ -330,6 +330,7 @@ class RedisKeys(object):
     RKEY_DEFAULT_ROOMS = 'rooms:default'
     RKEY_ACKS_USER = 'acks:user:%s'
     RKEY_ACKS_ROOM = 'acks:room:%s'
+    RKEY_USER_NODE = 'users:node'
 
     RKEY_SID_TO_USER_ID = 'user:sid:map'
     RKEY_USER_ID_TO_SID = 'sid:user:map'
@@ -340,6 +341,10 @@ class RedisKeys(object):
     @staticmethod
     def ack_for_user(user_id: str) -> str:
         return RedisKeys.RKEY_ACKS_USER % user_id
+
+    @staticmethod
+    def user_node() -> str:
+        return RedisKeys.RKEY_USER_NODE
 
     @staticmethod
     def ack_for_room(user_id: str) -> str:

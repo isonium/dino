@@ -109,6 +109,18 @@ class CacheRedis(object):
     def _del(self, key) -> None:
         self.cache.delete(key)
 
+    def register_user_on_node(self, user_id: str, queue_name: str):
+        self.redis.hset(RedisKeys.user_node(), user_id, queue_name)
+
+    def deregister_user_on_node(self, user_id: str):
+        self.redis.hdel(RedisKeys.user_node(), user_id)
+
+    def get_user_node(self, user_id: str):
+        node = self.redis.hget(RedisKeys.user_node(), user_id)
+        if node is None:
+            return None
+        return str(node, 'utf-8')
+
     def get_rooms_for_user(self, user_id: str):
         clean_rooms = dict()
 
