@@ -36,7 +36,7 @@ class KafkaPublisher(BasePublisher):
             value_serializer=lambda v: json.dumps(v).encode('utf-8'))
         logger.info('setting up pubsub for type "{}: and host(s) "{}"'.format(self.queue_type, ','.join(eq_host)))
 
-    def try_publish(self, message):
+    def try_publish(self, message, queue_name: str=None):
         if self.env.enrichment_manager is not None:
             message = self.env.enrichment_manager.handle(message)
 
