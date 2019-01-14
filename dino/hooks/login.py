@@ -101,20 +101,6 @@ class OnLoginHooks(object):
             # if login after server restart the cache value user:status:<user id> is non-existent, set to invisible
             environ.env.cache.set_user_invisible(user_id)
 
-    @staticmethod
-    def register_on_node(arg: tuple) -> None:
-        data, activity = arg
-
-        try:
-            environ.env.cache.register_user_on_node(
-                activity.actor.id,
-                environ.env.direct_publisher.queue_name
-            )
-        except Exception as e:
-            logger.error('could not register user on node: {}'.format(str(e)))
-            logger.exception(traceback.format_exc())
-            environ.env.capture_exception(sys.exc_info())
-
 
 @environ.env.observer.on('on_login')
 def _on_login_set_user_online(arg: tuple) -> None:
@@ -134,8 +120,3 @@ def _on_login_reset_temp_session_values(arg: tuple) -> None:
 @environ.env.observer.on('on_login')
 def _on_login_publish_activity(arg: tuple) -> None:
     OnLoginHooks.publish_activity(arg)
-
-
-@environ.env.observer.on('on_login')
-def _on_login_publish_activity(arg: tuple) -> None:
-    OnLoginHooks.register_on_node(arg)

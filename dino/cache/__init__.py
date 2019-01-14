@@ -27,31 +27,6 @@ class ICache(Interface):
         :return: the user id or none
         """
 
-    def register_user_on_node(self, user_id: str, queue_name: str):
-        """
-        register this user as being on this node
-
-        :param user_id:
-        :param queue_name:
-        :return:
-        """
-
-    def deregister_user_on_node(self, user_id: str):
-        """
-        dregister this user from being on this node
-
-        :param user_id:
-        :return:
-        """
-
-    def get_user_node(self, user_id: str):
-        """
-        get the queue name associated with this user
-
-        :param user_id:
-        :return:
-        """
-
     def set_is_room_ephemeral(self, room_id: str, is_ephemeral: bool) -> None:
         """
         set whether aroom is ephemeral (temporary) or not

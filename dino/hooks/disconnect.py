@@ -166,22 +166,12 @@ class OnDisconnectHooks(object):
                     logger.exception(traceback.format_exc())
                     environ.env.capture_exception(sys.exc_info())
 
-        def deregister_user_on_node():
-            try:
-                user_id = activity.actor.id
-                environ.env.cache.deregister_user_on_node(user_id)
-            except Exception as e:
-                logger.error('could not deregister user on node: {}'.format(str(e)))
-                logger.exception(traceback.format_exc())
-                environ.env.capture_exception(sys.exc_info())
-
         data, activity = arg
 
         leave_private_room()
         leave_all_public_rooms_and_emit_leave_events()
         emit_disconnect_event()
         set_user_offline()
-        deregister_user_on_node()
 
 
 @environ.env.observer.on('on_disconnect')
